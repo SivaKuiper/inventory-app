@@ -379,17 +379,15 @@
 <div id="loginScreen" class="login-screen">
     <div class="login-box">
         <h2>🔐 Login</h2>
-        <label class="label-sm">Select Role</label>
-        <select id="loginRole">
-            <option value="admin">Admin / Sales Team</option>
-            <option value="supervisor">Factory Supervisor</option>
-        </select>
+        <label class="label-sm">Username</label>
+        <input type="text" id="loginUsername" placeholder="Enter username">
         <label class="label-sm">Password</label>
         <input type="password" id="loginPassword" placeholder="Enter password">
         <button class="save-btn" onclick="doLogin()">🔓 Login</button>
         <p style="font-size: 11px; color: var(--text-secondary); margin-top: 20px; text-align: center;">
-            Default passwords: admin/admin or supervisor/supervisor<br>
-            <a href="javascript:void(0)" onclick="openPasswordManager()" style="color: var(--blue); text-decoration: none;">🔐 Change passwords</a>
+            Default credentials:<br>
+            Admin: admin / admin<br>
+            Supervisor: supervisor / supervisor
         </p>
     </div>
 </div>
@@ -423,7 +421,20 @@
                     <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
                         <strong>Run this SQL in Supabase:</strong>
                     </p>
-                    <pre style="background: #000; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 11px;">CREATE TABLE lots (
+                    <pre style="background: #000; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 11px;">CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  role TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Insert default users
+INSERT INTO users (username, password, role) VALUES 
+  ('admin', 'admin', 'admin'),
+  ('supervisor', 'supervisor', 'supervisor');
+
+CREATE TABLE lots (
   id SERIAL PRIMARY KEY,
   lot_id TEXT UNIQUE NOT NULL,
   cost DECIMAL NOT NULL,
@@ -604,7 +615,7 @@ CREATE TABLE sales (
                 <h2>Add Block</h2>
             </div>
             
-            <label class="label-sm">Select Lot</label>
+            <label class="label-sm">Select Active Lot</label>
             <select id="b_lot_list"></select>
             
             <label class="label-sm">Block ID</label>
@@ -635,6 +646,9 @@ CREATE TABLE sales (
             </div>
             
             <button class="save-btn" onclick="saveBlock()">✓ Save Block</button>
+            
+            <div class="section-header">Active Blocks - Click to Manage</div>
+            <div id="active_blocks_list"></div>
         </div>
 
         <!-- SLAB CUTTING PANEL -->
@@ -643,7 +657,7 @@ CREATE TABLE sales (
                 <h2>Record Cut Slab</h2>
             </div>
             
-            <label class="label-sm">Select Block</label>
+            <label class="label-sm">Select Active Block</label>
             <select id="s_block_list"></select>
             
             <label class="label-sm">Slab Number (Custom ID)</label>
@@ -662,6 +676,9 @@ CREATE TABLE sales (
             </div>
             
             <button class="save-btn" onclick="saveSlab()">✓ Save Raw Cut</button>
+            
+            <div class="section-header">Active Blocks Progress</div>
+            <div id="blocks_progress"></div>
         </div>
 
         <!-- POLISH PANEL -->
@@ -671,12 +688,19 @@ CREATE TABLE sales (
             </div>
             
             <label class="label-sm">Select Raw Slab</label>
-            <select id="p_slab_list"></select>
+            <select id="p_slab_list" onchange="autoFillPolishDimensions()"></select>
             
-            <label class="label-sm">Net Dimensions (inches)</label>
+            <div class="calc-box" style="border-left-color: var(--orange); margin-bottom: 16px;">
+                <div class="label-sm">Original Cutting Dimensions</div>
+                <div id="original_dimensions" style="font-size: 14px; color: var(--text-secondary);">
+                    Select a slab to see original dimensions
+                </div>
+            </div>
+            
+            <label class="label-sm">Net Dimensions (inches) - Auto-filled, adjust if edges trimmed</label>
             <div class="grid-2">
-                <input type="number" id="p_l" placeholder="Net Length">
-                <input type="number" id="p_h" placeholder="Net Height">
+                <input type="number" id="p_l" placeholder="Net Length" step="0.1">
+                <input type="number" id="p_h" placeholder="Net Height" step="0.1">
             </div>
             
             <label class="label-sm">Quality Grade</label>
@@ -688,6 +712,34 @@ CREATE TABLE sales (
             
             <button class="save-btn" onclick="savePolish()">✓ Finalize Slab</button>
         </div>
+
+        <!-- USER MANAGEMENT PANEL (Admin Only) -->
+        <div id="users" class="panel">
+            <div class="panel-header">
+                <h2>User Management</h2>
+                <button class="export-btn" onclick="refreshUsers()">🔄 Refresh</button>
+            </div>
+
+            <div class="calc-box" style="border-left-color: var(--blue)">
+                <div class="label-sm" style="color: var(--blue)">Add New User</div>
+                <label class="label-sm">Username</label>
+                <input type="text" id="new_username" placeholder="Enter username">
+                
+                <label class="label-sm">Password</label>
+                <input type="text" id="new_password" placeholder="Enter password">
+                
+                <label class="label-sm">Role</label>
+                <select id="new_role">
+                    <option value="admin">Admin / Sales Team</option>
+                    <option value="supervisor">Factory Supervisor</option>
+                </select>
+                
+                <button class="save-btn" onclick="addUser()">✓ Add User</button>
+            </div>
+
+            <div class="section-header">All Users</div>
+            <div id="users_list"></div>
+        </div>
     </div>
 </div>
 
@@ -698,7 +750,7 @@ CREATE TABLE sales (
     let currentRole = null;
     
     const menuConfig = {
-        admin: ['summary', 'inventory', 'sales', 'mass', 'block', 'slab', 'polish'],
+        admin: ['summary', 'inventory', 'sales', 'mass', 'block', 'slab', 'polish', 'users'],
         supervisor: ['summary', 'inventory', 'mass', 'block', 'slab', 'polish']
     };
     
@@ -709,7 +761,8 @@ CREATE TABLE sales (
         mass: 'Lot Entry',
         block: 'Block',
         slab: 'Cut',
-        polish: 'Polish'
+        polish: 'Polish',
+        users: 'Users'
     };
     
     // Initialize app on load
@@ -718,23 +771,36 @@ CREATE TABLE sales (
     });
     
     function initApp() {
-        const config = JSON.parse(localStorage.getItem('supabase_config') || '{}');
-        const session = JSON.parse(localStorage.getItem('user_session') || '{}');
+        // PRE-CONFIGURED SUPABASE CREDENTIALS
+        // Replace these with your actual Supabase credentials
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';  // e.g., https://xxxxx.supabase.co
+        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';  // Your anon/public key
+        
+        // Check if credentials are configured
+        if (SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE' || SUPABASE_KEY === 'YOUR_SUPABASE_ANON_KEY_HERE') {
+            // Fallback to localStorage if not hardcoded
+            const config = JSON.parse(localStorage.getItem('supabase_config') || '{}');
+            
+            if (!config.url || !config.key) {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+                document.getElementById('setup').style.display = 'block';
+                return;
+            }
+            
+            supabaseClient = window.supabase.createClient(config.url, config.key);
+        } else {
+            // Use hardcoded credentials
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
         
         if (typeof window.supabase === 'undefined') {
             alert('Error: Supabase library failed to load. Please refresh.');
             return;
         }
         
-        if (!config.url || !config.key) {
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'block';
-            document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
-            document.getElementById('setup').style.display = 'block';
-            return;
-        }
-        
-        supabaseClient = window.supabase.createClient(config.url, config.key);
+        const session = JSON.parse(localStorage.getItem('user_session') || '{}');
         
         if (session.role) {
             currentUser = session.user;
@@ -747,22 +813,72 @@ CREATE TABLE sales (
     }
     
     function doLogin() {
-        const role = document.getElementById('loginRole').value;
+        const username = document.getElementById('loginUsername').value.trim();
         const password = document.getElementById('loginPassword').value;
         
-        const passwords = JSON.parse(localStorage.getItem('app_passwords') || '{}');
-        const adminPass = passwords.admin || 'admin';
-        const supervisorPass = passwords.supervisor || 'supervisor';
-        
-        if ((role === 'admin' && password === adminPass) || 
-            (role === 'supervisor' && password === supervisorPass)) {
-            currentUser = role === 'admin' ? 'Admin User' : 'Factory Supervisor';
-            currentRole = role;
-            localStorage.setItem('user_session', JSON.stringify({ user: currentUser, role: currentRole }));
-            showMainApp();
-        } else {
-            alert('Invalid credentials');
+        if (!username || !password) {
+            alert('Please enter username and password');
+            return;
         }
+        
+        if (!supabaseClient) {
+            alert('⚠️ Database not configured. Please complete setup first.');
+            return;
+        }
+        
+        // Authenticate with Supabase
+        authenticateUser(username, password);
+    }
+    
+    async function authenticateUser(username, password) {
+        try {
+            const { data: users, error } = await supabaseClient
+                .from('users')
+                .select('*')
+                .eq('username', username)
+                .eq('password', password)
+                .single();
+            
+            if (error || !users) {
+                alert('❌ Invalid username or password');
+                return;
+            }
+            
+            // Login successful
+            currentUser = username;
+            currentRole = users.role;
+            localStorage.setItem('user_session', JSON.stringify({ 
+                user: currentUser, 
+                role: currentRole,
+                userId: users.id 
+            }));
+            
+            showMainApp();
+        } catch (error) {
+            alert('❌ Login failed: ' + error.message);
+        }
+    }
+    
+    function doLogout() {
+        localStorage.removeItem('user_session');
+        location.reload();
+    }
+    
+    function openPasswordManager() {
+        if (!currentRole || currentRole !== 'admin') {
+            alert('⚠️ Only admins can access user management.\n\nPlease go to the "Users" tab after logging in as admin.');
+            return;
+        }
+        
+        alert('📋 Password Management\n\nTo manage users and passwords:\n1. Login as Admin\n2. Go to "Users" tab\n3. Add/Edit/Delete users');
+    }
+    
+    function resetPasswords() {
+        alert('🔄 Password Reset\n\nPasswords are now managed in the database.\n\nTo reset:\n1. Go to Supabase → Table Editor → users table\n2. Edit the password directly\n\nOr login as admin and use the Users tab.');
+    }
+    
+    function showCurrentPasswords() {
+        alert('📋 View Passwords\n\nPasswords are stored in Supabase.\n\nTo view:\n1. Go to Supabase → Table Editor → users table\n2. View the password column\n\nOr login as admin and use the Users tab.');
     }
     
     function doLogout() {
@@ -833,7 +949,7 @@ CREATE TABLE sales (
     function showMainApp() {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
-        document.getElementById('currentUser').textContent = currentUser;
+        document.getElementById('currentUser').textContent = currentUser + ' (' + (currentRole === 'admin' ? 'Admin' : 'Supervisor') + ')';
         
         const nav = document.getElementById('mainNav');
         nav.innerHTML = '';
@@ -847,6 +963,11 @@ CREATE TABLE sales (
         
         showPanel(menuConfig[currentRole][0], nav.firstChild);
         refreshData();
+        
+        // Load users if admin
+        if (currentRole === 'admin') {
+            refreshUsers();
+        }
     }
     
     function showPanel(id, btn) {
@@ -1015,14 +1136,26 @@ CREATE TABLE sales (
                 const shrink = d.rawSqft > 0 ? ((d.rawSqft - d.netSqft) / d.rawSqft * 100).toFixed(1) : 0;
                 const plColor = pl >= 0 ? 'var(--neon)' : 'var(--red)';
                 
+                // Find lot status
+                const lot = (lots || []).find(l => l.lot_id === id);
+                const isActive = lot && lot.status === 'ACTIVE';
+                const statusBadge = isActive ? 
+                    '<span class="status-badge status-available">ACTIVE</span>' : 
+                    '<span class="status-badge status-sold">COMPLETED</span>';
+                
                 lotHtml += `<div class="calc-box" style="border-left-color:${plColor}">
-                    <div class="label-sm" style="color:${plColor}">${id}</div>
-                    <div style="font-size:18px; font-weight:700; color:${plColor}">
-                        ${pl >= 0 ? '+' : ''} Rs. ${pl.toLocaleString('en-IN')}
-                    </div>
-                    <div style="font-size:11px; color:var(--text-secondary); margin-top:6px;">
-                        Shrinkage: <span style="font-weight:600">${shrink}%</span> | 
-                        CBM: <span style="font-weight:600">${d.cbm.toFixed(2)} m³</span>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            <div class="label-sm" style="color:${plColor}">${id} ${statusBadge}</div>
+                            <div style="font-size:18px; font-weight:700; color:${plColor}; margin: 8px 0;">
+                                ${pl >= 0 ? '+' : ''} Rs. ${pl.toLocaleString('en-IN')}
+                            </div>
+                            <div style="font-size:11px; color:var(--text-secondary);">
+                                Shrinkage: <span style="font-weight:600">${shrink}%</span> | 
+                                CBM: <span style="font-weight:600">${d.cbm.toFixed(2)} m³</span>
+                            </div>
+                        </div>
+                        ${isActive ? `<button onclick="completeLot('${id}')" style="background:var(--neon); border:none; padding:8px 16px; border-radius:8px; color:#000; cursor:pointer; font-size:11px; font-weight:700; white-space:nowrap; margin-left: 10px;">Mark Complete</button>` : ''}
                     </div>
                 </div>`;
             }
@@ -1081,6 +1214,46 @@ CREATE TABLE sales (
                 .filter(b => b.status === 'ACTIVE')
                 .map(b => `<option value="${b.lot_id}-${b.block_id}">${b.lot_id}-${b.block_id}</option>`).join('') || 
                 '<option>No active blocks</option>';
+            
+            // Show active blocks with management options
+            let activeBlocksHtml = '';
+            const activeBlocks = (blocks || []).filter(b => b.status === 'ACTIVE');
+            
+            if (activeBlocks.length > 0) {
+                activeBlocksHtml = '<table class="inventory-table"><tr><th>Block ID</th><th>Lot</th><th>Volume (m³)</th><th>Action</th></tr>';
+                activeBlocks.forEach(block => {
+                    activeBlocksHtml += `<tr>
+                        <td><strong>${block.block_id}</strong></td>
+                        <td>${block.lot_id}</td>
+                        <td>${parseFloat(block.volume).toFixed(3)}</td>
+                        <td>
+                            <button onclick="completeBlock('${block.lot_id}', '${block.block_id}')" style="background:var(--neon); border:none; padding:6px 12px; border-radius:4px; color:#000; cursor:pointer; font-size:11px; font-weight:700; margin-right:5px;">✓ Complete</button>
+                            <button onclick="deleteBlock(${block.id}, '${block.lot_id}-${block.block_id}')" style="background:var(--red); border:none; padding:6px 12px; border-radius:4px; color:#fff; cursor:pointer; font-size:11px; font-weight:700;">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+                activeBlocksHtml += '</table>';
+            } else {
+                activeBlocksHtml = '<div style="text-align:center; padding:40px; color:var(--text-secondary)">No active blocks</div>';
+            }
+            document.getElementById('active_blocks_list').innerHTML = activeBlocksHtml;
+            
+            // Show blocks progress in cutting panel
+            let progressHtml = '';
+            activeBlocks.forEach(block => {
+                const blockKey = `${block.lot_id}-${block.block_id}`;
+                const slabCount = (slabs || []).filter(s => s.block_id === blockKey).length;
+                progressHtml += `<div class="calc-box" style="border-left-color: var(--blue)">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div class="label-sm">${blockKey}</div>
+                            <div style="font-size: 16px; font-weight: 700;">${slabCount} slabs cut</div>
+                        </div>
+                        <button onclick="completeBlock('${block.lot_id}', '${block.block_id}')" style="background:var(--neon); border:none; padding:8px 16px; border-radius:8px; color:#000; cursor:pointer; font-size:11px; font-weight:700;">Mark Complete</button>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('blocks_progress').innerHTML = progressHtml || '<div style="text-align:center; padding:40px; color:var(--text-secondary)">No active blocks</div>';
             
             const rawSlabs = (slabs || []).filter(s => s.status === 'RAW');
             document.getElementById('p_slab_list').innerHTML = rawSlabs
@@ -1254,6 +1427,44 @@ CREATE TABLE sales (
         }
     }
     
+    async function completeLot(lotId) {
+        if (!supabaseClient) return;
+        
+        // Check if all blocks are completed
+        const { data: blocks } = await supabaseClient
+            .from('blocks')
+            .select('status')
+            .eq('lot_id', lotId);
+        
+        const hasActiveBlocks = blocks && blocks.some(b => b.status === 'ACTIVE');
+        
+        if (hasActiveBlocks) {
+            const activeCount = blocks.filter(b => b.status === 'ACTIVE').length;
+            if (!confirm(`⚠️ This lot still has ${activeCount} ACTIVE block(s)!\n\nAre you sure you want to mark the lot as complete?`)) {
+                return;
+            }
+        }
+        
+        if (!confirm(`Mark lot "${lotId}" as COMPLETED?\n\nThis will:\n✓ Hide it from active lot dropdown\n✓ Keep all data for historical records\n✓ Show as "COMPLETED" in dashboard`)) {
+            return;
+        }
+        
+        try {
+            const { error } = await supabaseClient
+                .from('lots')
+                .update({ status: 'COMPLETED' })
+                .eq('lot_id', lotId);
+            
+            if (error) throw error;
+            
+            alert(`✅ Lot "${lotId}" marked as COMPLETED!`);
+            await refreshData();
+            
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+    
     async function saveBlock() {
         if (!supabaseClient) {
             alert('⚠️ Supabase not configured!');
@@ -1298,6 +1509,122 @@ CREATE TABLE sales (
             alert('Block saved!');
         } catch (error) {
             alert('Error: ' + error.message);
+        }
+    }
+    
+    async function completeBlock(lotId, blockId) {
+        if (!supabaseClient) return;
+        
+        const blockKey = `${lotId}-${blockId}`;
+        
+        if (!confirm(`Mark block "${blockKey}" as COMPLETED?\n\nThis will:\n✓ Hide it from cutting dropdown\n✓ Keep all data for records\n✓ Check if lot should auto-complete`)) {
+            return;
+        }
+        
+        try {
+            // Update block status
+            const { error: blockError } = await supabaseClient
+                .from('blocks')
+                .update({ status: 'COMPLETED' })
+                .eq('lot_id', lotId)
+                .eq('block_id', blockId);
+            
+            if (blockError) throw blockError;
+            
+            // Check if all blocks in this lot are completed
+            const { data: lotBlocks } = await supabaseClient
+                .from('blocks')
+                .select('status')
+                .eq('lot_id', lotId);
+            
+            const allCompleted = lotBlocks.every(b => b.status === 'COMPLETED');
+            
+            if (allCompleted) {
+                // Auto-complete the lot
+                const { error: lotError } = await supabaseClient
+                    .from('lots')
+                    .update({ status: 'COMPLETED' })
+                    .eq('lot_id', lotId);
+                
+                if (lotError) throw lotError;
+                
+                alert(`✅ Block completed!\n\n🎉 All blocks in lot "${lotId}" are now complete.\nLot has been marked as COMPLETED.`);
+            } else {
+                alert(`✅ Block "${blockKey}" marked as completed!`);
+            }
+            
+            await refreshData();
+            
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+    
+    async function deleteBlock(blockId, blockName) {
+        if (!supabaseClient) return;
+        
+        if (!confirm(`⚠️ DELETE block "${blockName}"?\n\nThis will permanently delete:\n• The block record\n• All slabs cut from this block\n\nThis CANNOT be undone!`)) {
+            return;
+        }
+        
+        try {
+            // First check if there are any slabs
+            const { data: slabs } = await supabaseClient
+                .from('slabs')
+                .select('id')
+                .eq('block_id', blockName);
+            
+            if (slabs && slabs.length > 0) {
+                if (!confirm(`This block has ${slabs.length} slabs!\n\nAre you SURE you want to delete everything?`)) {
+                    return;
+                }
+                
+                // Delete all slabs from this block
+                await supabaseClient.from('slabs').delete().eq('block_id', blockName);
+            }
+            
+            // Delete the block
+            const { error } = await supabaseClient
+                .from('blocks')
+                .delete()
+                .eq('id', blockId);
+            
+            if (error) throw error;
+            
+            alert('✅ Block and all related slabs deleted!');
+            await refreshData();
+            
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+    
+    async function autoFillPolishDimensions() {
+        const slabSelect = document.getElementById('p_slab_list');
+        const slabId = slabSelect.value;
+        
+        if (!slabId || !supabaseClient) return;
+        
+        try {
+            const { data: slab } = await supabaseClient
+                .from('slabs')
+                .select('*')
+                .eq('id', slabId)
+                .single();
+            
+            if (slab) {
+                // Auto-fill with original dimensions
+                document.getElementById('p_l').value = slab.length;
+                document.getElementById('p_h').value = slab.height;
+                
+                // Show original dimensions
+                document.getElementById('original_dimensions').innerHTML = `
+                    Original Cut: <strong>${slab.length}" × ${slab.height}"</strong> = ${slab.sqft} sqft<br>
+                    <span style="color: var(--orange); font-size: 12px;">Adjust below if edges were trimmed</span>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading slab dimensions:', error);
         }
     }
     
@@ -1509,13 +1836,139 @@ CREATE TABLE sales (
     }
     
     function exportInventory() {
-        alert('Inventory export - CSV download coming soon!');
+        exportInventoryToExcel();
     }
     
     function exportSales() {
         alert('Sales export - CSV download coming soon!');
     }
+    
+    async function refreshUsers() {
+        if (!supabaseClient) return;
+        
+        try {
+            const { data: users, error } = await supabaseClient
+                .from('users')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            
+            let usersHtml = '<table class="inventory-table"><tr><th>Username</th><th>Role</th><th>Created</th><th>Action</th></tr>';
+            
+            (users || []).forEach(user => {
+                const roleDisplay = user.role === 'admin' ? 'Admin / Sales' : 'Supervisor';
+                const date = new Date(user.created_at).toLocaleDateString();
+                
+                usersHtml += `<tr>
+                    <td><strong>${user.username}</strong></td>
+                    <td>${roleDisplay}</td>
+                    <td>${date}</td>
+                    <td>
+                        <button onclick="editUserPassword('${user.username}')" style="background:var(--blue); border:none; padding:6px 12px; border-radius:4px; color:#000; cursor:pointer; font-size:11px; font-weight:700; margin-right:5px;">Change Password</button>
+                        <button onclick="deleteUser(${user.id}, '${user.username}')" style="background:var(--red); border:none; padding:6px 12px; border-radius:4px; color:#fff; cursor:pointer; font-size:11px; font-weight:700;">Delete</button>
+                    </td>
+                </tr>`;
+            });
+            
+            usersHtml += '</table>';
+            document.getElementById('users_list').innerHTML = usersHtml;
+            
+        } catch (error) {
+            alert('Error loading users: ' + error.message);
+        }
+    }
+    
+    async function addUser() {
+        if (!supabaseClient) return;
+        
+        const username = document.getElementById('new_username').value.trim();
+        const password = document.getElementById('new_password').value.trim();
+        const role = document.getElementById('new_role').value;
+        
+        if (!username || !password) {
+            alert('Please fill all fields');
+            return;
+        }
+        
+        if (password.length < 4) {
+            alert('Password must be at least 4 characters');
+            return;
+        }
+        
+        try {
+            const { error } = await supabaseClient
+                .from('users')
+                .insert([{ username, password, role }]);
+            
+            if (error) {
+                if (error.code === '23505') {
+                    alert('❌ Username already exists');
+                } else {
+                    throw error;
+                }
+                return;
+            }
+            
+            document.getElementById('new_username').value = '';
+            document.getElementById('new_password').value = '';
+            alert('✅ User added successfully!');
+            refreshUsers();
+            
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+    
+    async function editUserPassword(username) {
+        if (!supabaseClient) return;
+        
+        const newPassword = prompt(`Enter new password for "${username}":`);
+        
+        if (!newPassword) return;
+        
+        if (newPassword.length < 4) {
+            alert('Password must be at least 4 characters');
+            return;
+        }
+        
+        try {
+            const { error } = await supabaseClient
+                .from('users')
+                .update({ password: newPassword })
+                .eq('username', username);
+            
+            if (error) throw error;
+            
+            alert(`✅ Password updated for ${username}!\n\nNew password: ${newPassword}`);
+            
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+    
+    async function deleteUser(userId, username) {
+        if (!supabaseClient) return;
+        
+        if (!confirm(`Delete user "${username}"?\n\nThis cannot be undone.`)) {
+            return;
+        }
+        
+        try {
+            const { error } = await supabaseClient
+                .from('users')
+                .delete()
+                .eq('id', userId);
+            
+            if (error) throw error;
+            
+            alert('✅ User deleted successfully!');
+            refreshUsers();
+            
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
 </script>
 </body>
 </html>
-
