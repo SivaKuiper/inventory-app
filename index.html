@@ -510,19 +510,27 @@ async function undoPolish(){
     console.log('Lot:', lotId, 'Block:', blockIdOnly);
     
     // Check before update
-    const {data:before,error:beforeErr}=await supabaseClient.from('slabs').select('status,id,slab_number').eq('id',slabIdInt).single();
+    const {data:before}=await supabaseClient.from('slabs').select('status,id,slab_number').eq('id',slabIdInt).single();
     console.log('BEFORE:', before);
-    if(beforeErr) console.error('Before error:', beforeErr);
     
-    // Try UPDATE with just status first
-    console.log('Attempting simple status update...');
-    const {data:updateData,error:updateError,status:httpStatus,statusText}=await supabaseClient
+    // Update: Change status to RAW and clear polished fields in ONE operation
+    console.log('Updating status to RAW and clearing polished fields...');
+    const {data:updateData,error:updateError}=await supabaseClient
       .from('slabs')
-      .update({status:'RAW'})
+      .update({
+        status:'RAW',
+        polished_length:null,
+        polished_height:null,
+        polished_length_cm:null,
+        polished_height_cm:null,
+        polished_sqft:null,
+        rate:0,
+        value:0
+      })
       .eq('id',slabIdInt)
       .select();
     
-    console.log('Update response:', {data:updateData,error:updateError,httpStatus,statusText});
+    console.log('Update response:', {data:updateData,error:updateError});
     
     if(updateError){
       console.error('Update failed:', updateError);
@@ -530,28 +538,15 @@ async function undoPolish(){
     }
     
     // Check after update
-    const {data:after,error:afterErr}=await supabaseClient.from('slabs').select('status,id,slab_number').eq('id',slabIdInt).single();
+    const {data:after}=await supabaseClient.from('slabs').select('status,id,slab_number,rate,value').eq('id',slabIdInt).single();
     console.log('AFTER:', after);
-    if(afterErr) console.error('After error:', afterErr);
     
-    // Now update all other fields
-    if(after&&after.status==='RAW'){
-      console.log('Status changed to RAW, now clearing polished fields...');
-      await supabaseClient.from('slabs').update({
-        polished_length:null,
-        polished_height:null,
-        polished_length_cm:null,
-        polished_height_cm:null,
-        polished_sqft:null,
-        rate:null,
-        value:null,
-        polish_wastage_sqft:null
-      }).eq('id',slabIdInt);
-    }else{
+    if(!after||after.status!=='RAW'){
       throw new Error('Status did not change to RAW. Current status: '+(after?after.status:'unknown'));
     }
     
     // Update block status
+    console.log('Updating block to PROCESSING...');
     await supabaseClient.from('blocks').update({processing_status:'PROCESSING'}).eq('lot_id',lotId).eq('block_id',blockIdOnly);
     
     closeEditModal();
