@@ -403,7 +403,27 @@ function exportPLExcel(){const wb=XLSX.utils.book_new();const wsData=[['Lot','In
 
 function exportPLPDF(){const{jsPDF}=window.jspdf;const doc=new jsPDF();doc.setFontSize(18);doc.text('P&L Report',14,15);const tableData=globalData.lots.map(lot=>{const investment=parseFloat(lot.cost)*100000;const revenue=globalData.sales.filter(s=>s.lot_id===lot.lot_id).reduce((sum,s)=>sum+parseFloat(s.total_value),0);const profit=revenue-investment;const roi=investment>0?((profit/investment)*100).toFixed(1):0;return[lot.lot_id,`Rs. ${investment.toLocaleString('en-IN')}`,`Rs. ${revenue.toLocaleString('en-IN')}`,`Rs. ${profit.toLocaleString('en-IN')}`,`${roi}%`]});doc.autoTable({head:[['Lot','Investment','Revenue','P/L','ROI']],body:tableData,startY:25,styles:{fontSize:9}});doc.save('PL_Report.pdf')}
 
-function calculateBlockWastage(){const getMin=(cls)=>{const v=Array.from(document.getElementsByClassName(cls)).map(i=>parseFloat(i.value)).filter(v=>v>0);return v.length?Math.min(...v):0};const origL=getMin('b_orig_l'),origH=getMin('b_orig_h'),origW=getMin('b_orig_w');const useL=getMin('b_use_l'),useH=getMin('b_use_h'),useW=getMin('b_use_w');if(origL&&origH&&origW&&useL&&useH&&useW){const origVol=(origL*origH*origW)/1000000;const useVol=(useL*useH*useW)/1000000;const wastage=origVol-useVol;const wastagePercent=((wastage/origVol)*100).toFixed(1);document.getElementById('block_wastage_display').style.display='block';document.getElementById('block_wastage_text').innerHTML=`${wastage.toFixed(3)} CBM (${wastagePercent}%)<br><small>Original: ${origVol.toFixed(3)} CBM → Usable: ${useVol.toFixed(3)} CBM</small>`}else{document.getElementById('block_wastage_display').style.display='none'}}
+function calculateBlockWastage(){
+  // Changed from MIN to AVERAGE to match factory calculations
+  const getAvg=(cls)=>{
+    const v=Array.from(document.getElementsByClassName(cls)).map(i=>parseFloat(i.value)).filter(v=>v>0);
+    return v.length?v.reduce((sum,val)=>sum+val,0)/v.length:0
+  };
+  
+  const origL=getAvg('b_orig_l'),origH=getAvg('b_orig_h'),origW=getAvg('b_orig_w');
+  const useL=getAvg('b_use_l'),useH=getAvg('b_use_h'),useW=getAvg('b_use_w');
+  
+  if(origL&&origH&&origW&&useL&&useH&&useW){
+    const origVol=(origL*origH*origW)/1000000;
+    const useVol=(useL*useH*useW)/1000000;
+    const wastage=origVol-useVol;
+    const wastagePercent=((wastage/origVol)*100).toFixed(1);
+    document.getElementById('block_wastage_display').style.display='block';
+    document.getElementById('block_wastage_text').innerHTML=`${wastage.toFixed(3)} CBM (${wastagePercent}%)<br><small>Original: ${origVol.toFixed(3)} CBM → Usable: ${useVol.toFixed(3)} CBM</small><br><span style="color:var(--text-secondary);font-size:10px">Using AVERAGE of 4 measurements (factory method)</span>`
+  }else{
+    document.getElementById('block_wastage_display').style.display='none'
+  }
+}
 
 function calculatePolishWastage(){const rawSqft=parseFloat(document.getElementById('p_slab_list').selectedOptions[0]?.getAttribute('data-sqft')||0);const polishLcm=parseFloat(document.getElementById('p_l_cm').value)||0;const polishHcm=parseFloat(document.getElementById('p_h_cm').value)||0;if(rawSqft&&polishLcm&&polishHcm){const polishLin=polishLcm/2.54;const polishHin=polishHcm/2.54;const polishSqft=(polishLin*polishHin)/144;const wastage=rawSqft-polishSqft;const wastagePercent=((wastage/rawSqft)*100).toFixed(1);document.getElementById('polish_wastage_display').style.display='block';document.getElementById('polish_wastage_text').innerHTML=`${wastage.toFixed(2)} sqft (${wastagePercent}%)<br><small>Raw: ${rawSqft.toFixed(2)} sqft → Polished: ${polishSqft.toFixed(2)} sqft</small>`}else{document.getElementById('polish_wastage_display').style.display='none'}}
 
@@ -415,7 +435,56 @@ function loadLastBlock(){const lastBlock=localStorage.getItem('last_block');if(l
 
 async function saveMass(){if(!supabaseClient)return;const lot=document.getElementById('m_lot').value.trim();const cost=parseFloat(document.getElementById('m_cost').value);if(!lot||!cost){alert('Fill all');return}try{const{error}=await supabaseClient.from('lots').insert([{lot_id:lot,cost:cost,status:'ACTIVE'}]);if(error)throw error;document.getElementById('m_lot').value='';document.getElementById('m_cost').value='';await refreshData();alert('Lot registered!')}catch(error){alert('Error: '+error.message)}}
 
-async function saveBlock(){if(!supabaseClient)return;const getMin=(cls)=>{const v=Array.from(document.getElementsByClassName(cls)).map(i=>parseFloat(i.value)).filter(v=>v>0);return v.length?Math.min(...v):0};const origL=getMin('b_orig_l'),origH=getMin('b_orig_h'),origW=getMin('b_orig_w');const useL=getMin('b_use_l'),useH=getMin('b_use_h'),useW=getMin('b_use_w');const lotId=document.getElementById('b_lot_list').value;const blockId=document.getElementById('b_id').value.trim();if(!origL||!origH||!origW||!useL||!useH||!useW||!blockId){alert('Fill all dimensions');return}const origVol=(origL*origH*origW)/1000000;const useVol=(useL*useH*useW)/1000000;try{const{error}=await supabaseClient.from('blocks').insert([{lot_id:lotId,block_id:blockId,original_length:origL,original_width:origW,original_height:origH,original_volume:origVol.toFixed(3),usable_length:useL,usable_width:useW,usable_height:useH,usable_volume:useVol.toFixed(3),status:'ACTIVE',processing_status:'READY'}]);if(error)throw error;document.getElementById('b_id').value='';document.querySelectorAll('.b_orig_l, .b_orig_h, .b_orig_w, .b_use_l, .b_use_h, .b_use_w').forEach(i=>i.value='');document.getElementById('block_wastage_display').style.display='none';await refreshData();alert('Block saved!')}catch(error){alert('Error: '+error.message)}}
+async function saveBlock(){
+  if(!supabaseClient)return;
+  
+  // Changed from MIN to AVERAGE to match factory calculations
+  const getAvg=(cls)=>{
+    const v=Array.from(document.getElementsByClassName(cls)).map(i=>parseFloat(i.value)).filter(v=>v>0);
+    return v.length?v.reduce((sum,val)=>sum+val,0)/v.length:0
+  };
+  
+  const origL=getAvg('b_orig_l'),origH=getAvg('b_orig_h'),origW=getAvg('b_orig_w');
+  const useL=getAvg('b_use_l'),useH=getAvg('b_use_h'),useW=getAvg('b_use_w');
+  const lotId=document.getElementById('b_lot_list').value;
+  const blockId=document.getElementById('b_id').value.trim();
+  
+  if(!origL||!origH||!origW||!useL||!useH||!useW||!blockId){
+    alert('Fill all dimensions');
+    return
+  }
+  
+  const origVol=(origL*origH*origW)/1000000;
+  const useVol=(useL*useH*useW)/1000000;
+  
+  try{
+    const{error}=await supabaseClient.from('blocks').insert([{
+      lot_id:lotId,
+      block_id:blockId,
+      original_length:origL,
+      original_width:origW,
+      original_height:origH,
+      original_volume:origVol.toFixed(3),
+      usable_length:useL,
+      usable_width:useW,
+      usable_height:useH,
+      usable_volume:useVol.toFixed(3),
+      cutting_wastage_cbm:(origVol-useVol).toFixed(3),
+      status:'ACTIVE',
+      processing_status:'READY'
+    }]);
+    
+    if(error)throw error;
+    
+    document.getElementById('b_id').value='';
+    document.querySelectorAll('.b_orig_l, .b_orig_h, .b_orig_w, .b_use_l, .b_use_h, .b_use_w').forEach(i=>i.value='');
+    document.getElementById('block_wastage_display').style.display='none';
+    await refreshData();
+    alert('Block saved! (Using AVERAGE of measurements)');
+  }catch(error){
+    alert('Error: '+error.message)
+  }
+}
 
 async function saveSlab(){if(!supabaseClient)return;const lcm=parseFloat(document.getElementById('s_l_cm').value);const hcm=parseFloat(document.getElementById('s_h_cm').value);const blockId=document.getElementById('s_block_list').value;const thickness=document.getElementById('s_thick').value;const slabNumber=document.getElementById('s_slab_number').value.trim();if(!lcm||!hcm||!slabNumber){alert('Fill all');return}const lin=lcm/2.54;const hin=hcm/2.54;const sq=(lin*hin)/144;try{const[lotId,blockIdOnly]=blockId.split('-');await supabaseClient.from('blocks').update({processing_status:'PROCESSING'}).eq('lot_id',lotId).eq('block_id',blockIdOnly);const{error}=await supabaseClient.from('slabs').insert([{block_id:blockId,slab_number:slabNumber,status:'RAW',raw_length:lin.toFixed(2),raw_height:hin.toFixed(2),raw_length_cm:lcm,raw_height_cm:hcm,raw_sqft:sq.toFixed(2),thickness:thickness}]);if(error)throw error;document.getElementById('s_l_cm').value='';document.getElementById('s_h_cm').value='';document.getElementById('s_slab_number').value='';document.getElementById('s_l_in').innerText='0';document.getElementById('s_h_in').innerText='0';await refreshData();alert('Slab cut saved!')}catch(error){alert('Error: '+error.message)}}
 
