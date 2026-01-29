@@ -27,7 +27,7 @@
 <div class="container">
 <div id="setup" class="panel"><div class="calc-box" style="border-left-color:var(--blue)"><h3 style="color:var(--neon);margin-bottom:20px">🚀 Setup</h3><label class="label-sm">Supabase URL</label><input type="text" id="supabase_url" placeholder="https://xxxxx.supabase.co"><label class="label-sm">Key</label><input type="text" id="supabase_key" placeholder="eyJ..."><button class="save-btn" onclick="testConnection()" style="background:var(--blue);margin-bottom:10px">Test</button><button class="save-btn" onclick="saveSupabaseConfig()">Save</button></div></div>
 
-<div id="summary" class="panel"><button class="sync-btn" onclick="refreshData()">🔄 Sync</button><div class="calc-box" style="border-left-color:var(--blue)"><div class="label-sm" style="color:var(--blue)">Factory Valuation</div><div id="fac_val" class="val">Rs. 0</div><div class="grid-2" style="margin-top:12px;font-size:12px;gap:20px"><div><span style="color:var(--text-secondary)">CBM:</span> <strong id="total_cbm" style="color:var(--neon)">0</strong></div><div><span style="color:var(--text-secondary)">SQM:</span> <strong id="total_sqm" style="color:var(--neon)">0</strong></div></div></div><div class="calc-box" style="border-left-color:var(--red)"><div class="label-sm" style="color:var(--red)">Total Wastage</div><div class="grid-2" style="font-size:13px;gap:16px"><div><div style="color:var(--text-secondary);font-size:11px">Cutting</div><div id="cutting_wastage_cbm" style="font-size:18px;font-weight:700;color:var(--red)">0 CBM</div></div><div><div style="color:var(--text-secondary);font-size:11px">Polish</div><div id="polish_wastage_sqft" style="font-size:18px;font-weight:700;color:var(--red)">0 SQFT</div></div><div><div style="color:var(--text-secondary);font-size:11px">Sales</div><div id="sales_wastage_sqft" style="font-size:18px;font-weight:700;color:var(--red)">0 SQFT</div></div><div><div style="color:var(--text-secondary);font-size:11px">Total %</div><div id="total_wastage_percent" style="font-size:18px;font-weight:700;color:var(--red)">0%</div></div></div></div><div class="calc-box" style="border-left-color:var(--orange)"><div class="label-sm" style="color:var(--orange)">Yard Summary (Active Blocks)</div><div class="grid-2" style="font-size:13px;gap:16px;margin-top:12px"><div><div style="color:var(--text-secondary);font-size:11px">Total Blocks</div><div id="yard_total_blocks" style="font-size:18px;font-weight:700;color:var(--orange)">0</div></div><div><div style="color:var(--text-secondary);font-size:11px">Ready (Untouched)</div><div id="yard_ready_blocks" style="font-size:18px;font-weight:700;color:var(--blue)">0</div></div><div><div style="color:var(--text-secondary);font-size:11px">Cutting</div><div id="yard_cutting_blocks" style="font-size:18px;font-weight:700;color:var(--orange)">0</div></div><div><div style="color:var(--text-secondary);font-size:11px">Need Polish</div><div id="yard_need_polish" style="font-size:18px;font-weight:700;color:var(--red)">0</div></div></div></div><div class="section-header">Lots</div><div id="lot_grid"></div><div class="section-header" style="margin-top:32px">Completed Blocks Summary</div><div id="completed_blocks_grid"></div></div>
+<div id="summary" class="panel"><button class="sync-btn" onclick="refreshData()">🔄 Sync</button><div class="calc-box" style="border-left-color:var(--blue)"><div class="label-sm" style="color:var(--blue)">Factory Valuation</div><div id="fac_val" class="val">Rs. 0</div><div class="grid-2" style="margin-top:12px;font-size:12px;gap:20px"><div><span style="color:var(--text-secondary)">CBM:</span> <strong id="total_cbm" style="color:var(--neon)">0</strong></div><div><span style="color:var(--text-secondary)">SQM:</span> <strong id="total_sqm" style="color:var(--neon)">0</strong></div></div></div><div class="calc-box" style="border-left-color:var(--red)"><div class="label-sm" style="color:var(--red)">Total Wastage</div><div class="grid-2" style="font-size:13px;gap:16px"><div><div style="color:var(--text-secondary);font-size:11px">Cutting</div><div id="cutting_wastage_cbm" style="font-size:18px;font-weight:700;color:var(--red)">0 CBM</div></div><div><div style="color:var(--text-secondary);font-size:11px">Polish</div><div id="polish_wastage_sqft" style="font-size:18px;font-weight:700;color:var(--red)">0 SQFT</div></div><div><div style="color:var(--text-secondary);font-size:11px">Sales</div><div id="sales_wastage_sqft" style="font-size:18px;font-weight:700;color:var(--red)">0 SQFT</div></div><div><div style="color:var(--text-secondary);font-size:11px">Total %</div><div id="total_wastage_percent" style="font-size:18px;font-weight:700;color:var(--red)">0%</div></div></div></div><div class="calc-box" style="border-left-color:var(--orange)"><div class="label-sm" style="color:var(--orange)">Yard Summary (Active Blocks)</div><div class="grid-2" style="font-size:13px;gap:16px;margin-top:12px"><div><div style="color:var(--text-secondary);font-size:11px">Total Blocks</div><div id="yard_total_blocks" style="font-size:18px;font-weight:700;color:var(--orange)">0</div></div><div><div style="color:var(--text-secondary);font-size:11px">Ready (Untouched)</div><div id="yard_ready_blocks" style="font-size:18px;font-weight:700;color:var(--blue)">0</div></div><div><div style="color:var(--text-secondary);font-size:11px">Cutting</div><div id="yard_cutting_blocks" style="font-size:18px;font-weight:700;color:var(--orange)">0</div></div><div><div style="color:var(--text-secondary);font-size:11px">Need Polish</div><div id="yard_need_polish" style="font-size:18px;font-weight:700;color:var(--red)">0</div></div></div></div><div class="section-header" style="display:flex;justify-content:space-between;align-items:center"><span>📦 Active Blocks - Detailed Status</span><button onclick="toggleBlocksView()" style="background:var(--blue);border:none;padding:6px 12px;border-radius:6px;color:#000;font-size:11px;font-weight:700;cursor:pointer" id="toggle_blocks_btn">Show Details</button></div><div id="active_blocks_detail" style="display:none"></div><div class="section-header">Lots</div><div id="lot_grid"></div><div class="section-header" style="margin-top:32px">Completed Blocks Summary</div><div id="completed_blocks_grid"></div></div>
 
 <div id="inventory" class="panel"><div class="panel-header"><h2>Inventory</h2><div><button class="export-btn" onclick="exportInventoryExcel()">📊 Excel</button><button class="export-btn" onclick="exportInventoryPDF()">📄 PDF</button></div></div><div class="calc-box" style="border-left-color:var(--orange)"><div class="label-sm">Stock</div><div id="inv_total_sqft" class="val">0 SQFT</div><div id="inv_total_count" style="font-size:12px;color:var(--text-secondary);margin-top:4px">0 Slabs</div></div><div class="section-header">By Length</div><div id="length_classification"></div><div class="section-header">By Quality</div><div id="inventory_classification"></div><div class="section-header">All Slabs</div><div id="all_slabs_list"></div></div>
 
@@ -208,7 +208,186 @@ if(wasteSales&&wasteSales.length>0){let wasteHtml='<table class="inventory-table
 
 updatePLReport(lots,sales,wasteSales)}catch(error){console.error('Error:',error);alert('Error: '+error.message)}finally{if(btn){btn.innerText="🔄 Sync";btn.disabled=false}}}
 
-function getQualityName(rate,thickness){const grades=JSON.parse(localStorage.getItem('quality_grades')||JSON.stringify([{name:'Premium 2cm',rate:150,thickness:'2cm'},{name:'Premium 3cm',rate:200,thickness:'3cm'},{name:'Standard 2cm',rate:100,thickness:'2cm'},{name:'Standard 3cm',rate:130,thickness:'3cm'},{name:'Commercial',rate:75,thickness:'2cm'}]));const match=grades.find(g=>g.rate==rate&&g.thickness===thickness);return match?match.name:`Quality ${rate}`}
+function getQualityName(rate,thickness){const grades=JSON.parse(localStorage.getItem('quality_grades')||JSON.stringify([{name:'Premium 2cm',rate:150,thickness:'2cm'},{name:'Premium 3cm',rate:200,thickness:'3cm'},{name:'Premium 2cm',rate:100,thickness:'2cm'},{name:'Standard 3cm',rate:130,thickness:'3cm'},{name:'Commercial',rate:75,thickness:'2cm'}]));const match=grades.find(g=>g.rate==rate&&g.thickness===thickness);return match?match.name:`Quality ${rate}`}
+
+// Toggle active blocks detail view
+function toggleBlocksView(){
+  const detailDiv=document.getElementById('active_blocks_detail');
+  const btn=document.getElementById('toggle_blocks_btn');
+  if(detailDiv.style.display==='none'){
+    detailDiv.style.display='block';
+    btn.innerText='Hide Details';
+    displayActiveBlocksDetail();
+  }else{
+    detailDiv.style.display='none';
+    btn.innerText='Show Details';
+  }
+}
+
+// Display detailed status of all active blocks
+function displayActiveBlocksDetail(){
+  const blocks=globalData.blocks||[];
+  const slabs=globalData.slabs||[];
+  const sales=globalData.sales||[];
+  
+  const activeBlocks=blocks.filter(b=>b.status==='ACTIVE');
+  
+  if(activeBlocks.length===0){
+    document.getElementById('active_blocks_detail').innerHTML='<div style="text-align:center;padding:40px;color:var(--text-secondary)">No active blocks</div>';
+    return;
+  }
+  
+  let html='';
+  
+  activeBlocks.forEach(block=>{
+    const blockKey=`${block.lot_id}-${block.block_id}`;
+    const blockSlabs=slabs.filter(s=>s.block_id===blockKey);
+    
+    // Count slabs by status
+    const rawSlabs=blockSlabs.filter(s=>s.status==='RAW'&&!sales.some(sale=>sale.slab_id===s.id));
+    const polishedSlabs=blockSlabs.filter(s=>s.status==='POLISHED'&&!sales.some(sale=>sale.slab_id===s.id));
+    const soldSlabs=blockSlabs.filter(s=>sales.some(sale=>sale.slab_id===s.id));
+    
+    const totalSlabs=blockSlabs.length;
+    const rawCount=rawSlabs.length;
+    const polishedCount=polishedSlabs.length;
+    const soldCount=soldSlabs.length;
+    
+    // Determine status and color
+    let statusText='';
+    let statusColor='';
+    let statusBadge='';
+    
+    if(totalSlabs===0){
+      statusText='READY';
+      statusColor='var(--blue)';
+      statusBadge='<span class="status-badge status-available">⚪ READY (No slabs)</span>';
+    }else if(rawCount===totalSlabs){
+      statusText='CUTTING DONE - NEED POLISH';
+      statusColor='var(--red)';
+      statusBadge='<span class="status-badge" style="background:rgba(255,61,0,0.2);color:var(--red)">🔴 ALL SLABS NEED POLISH</span>';
+    }else if(polishedCount>0&&rawCount>0){
+      statusText='MIXED - SOME POLISHING';
+      statusColor='var(--orange)';
+      statusBadge='<span class="status-badge" style="background:rgba(255,145,0,0.2);color:var(--orange)">🟠 PARTIAL POLISH</span>';
+    }else if(rawCount>0){
+      statusText='IN CUTTING';
+      statusColor='var(--orange)';
+      statusBadge='<span class="status-badge status-processing">🟡 CUTTING</span>';
+    }else if(polishedCount===totalSlabs){
+      statusText='ALL POLISHED';
+      statusColor='var(--neon)';
+      statusBadge='<span class="status-badge" style="background:rgba(0,230,118,0.2);color:var(--neon)">🟢 ALL POLISHED</span>';
+    }else if(soldCount===totalSlabs){
+      statusText='ALL SOLD';
+      statusColor='var(--blue)';
+      statusBadge='<span class="status-badge" style="background:rgba(0,229,255,0.2);color:var(--blue)">🔵 ALL SOLD</span>';
+    }
+    
+    // Calculate CBM
+    const origCBM=parseFloat(block.original_volume||0);
+    const useCBM=parseFloat(block.usable_volume||0);
+    
+    html+=`
+      <div class="calc-box" style="border-left-color:${statusColor};margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
+          <div style="flex:1">
+            <div class="label-sm" style="color:${statusColor}">${blockKey}</div>
+            <div style="margin-top:8px">${statusBadge}</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="edit-btn" onclick="editBlock('${block.lot_id}','${block.block_id}')">✏️ Edit</button>
+            <button onclick="changeBlockStatus('${block.lot_id}','${block.block_id}')" style="background:var(--orange);border:none;padding:8px 12px;border-radius:6px;color:#000;font-size:11px;font-weight:700;cursor:pointer">🔄 Status</button>
+          </div>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <div style="text-align:center;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px">
+            <div style="font-size:10px;color:var(--text-secondary);text-transform:uppercase">Original CBM</div>
+            <div style="font-size:20px;font-weight:700;color:var(--blue);margin-top:4px">${origCBM.toFixed(2)}</div>
+          </div>
+          <div style="text-align:center;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px">
+            <div style="font-size:10px;color:var(--text-secondary);text-transform:uppercase">Usable CBM</div>
+            <div style="font-size:20px;font-weight:700;color:var(--neon);margin-top:4px">${useCBM.toFixed(2)}</div>
+          </div>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;font-size:12px">
+          <div style="text-align:center;padding:8px;background:rgba(255,145,0,0.1);border-radius:6px">
+            <div style="color:var(--text-secondary);font-size:10px">Total</div>
+            <div style="color:var(--orange);font-weight:700;font-size:18px;margin-top:4px">${totalSlabs}</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:rgba(255,61,0,0.1);border-radius:6px">
+            <div style="color:var(--text-secondary);font-size:10px">RAW</div>
+            <div style="color:var(--red);font-weight:700;font-size:18px;margin-top:4px">${rawCount}</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:rgba(0,230,118,0.1);border-radius:6px">
+            <div style="color:var(--text-secondary);font-size:10px">POLISHED</div>
+            <div style="color:var(--neon);font-weight:700;font-size:18px;margin-top:4px">${polishedCount}</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:rgba(0,229,255,0.1);border-radius:6px">
+            <div style="color:var(--text-secondary);font-size:10px">SOLD</div>
+            <div style="color:var(--blue);font-weight:700;font-size:18px;margin-top:4px">${soldCount}</div>
+          </div>
+        </div>
+        
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:11px;color:var(--text-secondary)">
+            ${statusText}
+          </div>
+          <button onclick="completeBlock('${block.lot_id}','${block.block_id}')" style="background:var(--neon);border:none;padding:8px 16px;border-radius:6px;color:#000;font-size:11px;font-weight:700;cursor:pointer">✅ Mark Complete</button>
+        </div>
+      </div>
+    `;
+  });
+  
+  document.getElementById('active_blocks_detail').innerHTML=html;
+}
+
+// Change block status manually
+async function changeBlockStatus(lotId,blockId){
+  const block=globalData.blocks.find(b=>b.lot_id===lotId&&b.block_id===blockId);
+  if(!block)return;
+  
+  const currentStatus=block.processing_status||'READY';
+  
+  document.getElementById('edit_modal_title').textContent='🔄 Change Block Status';
+  document.getElementById('edit_modal_content').innerHTML=`
+    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">Block: <strong>${lotId}-${blockId}</strong></p>
+    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">Current Status: <strong style="color:var(--neon)">${currentStatus}</strong></p>
+    
+    <label class="label-sm">New Status</label>
+    <select id="new_block_status" style="width:100%;padding:12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px">
+      <option value="READY" ${currentStatus==='READY'?'selected':''}>⚪ READY - Not started yet</option>
+      <option value="PROCESSING" ${currentStatus==='PROCESSING'?'selected':''}>🟡 CUTTING - In cutting process</option>
+      <option value="CUT_COMPLETE" ${currentStatus==='CUT_COMPLETE'?'selected':''}>🔴 CUT DONE - Ready for polish</option>
+      <option value="POLISHING" ${currentStatus==='POLISHING'?'selected':''}>🟠 POLISHING - Some slabs polishing</option>
+    </select>
+    
+    <div class="wastage-info" style="margin-top:16px">
+      <strong>Status Guide:</strong><br>
+      • READY: Block is in yard, cutting not started<br>
+      • CUTTING: Currently cutting slabs from this block<br>
+      • CUT DONE: Finished cutting, all slabs ready for polish<br>
+      • POLISHING: Some slabs sent to polishing line
+    </div>
+  `;
+  
+  document.getElementById('save_edit_btn').onclick=async ()=>{
+    const newStatus=document.getElementById('new_block_status').value;
+    try{
+      await supabaseClient.from('blocks').update({processing_status:newStatus}).eq('lot_id',lotId).eq('block_id',blockId);
+      closeEditModal();
+      await refreshData();
+      displayActiveBlocksDetail();
+      alert(`✅ Block ${lotId}-${blockId} status changed to ${newStatus}`);
+    }catch(error){
+      alert('Error: '+error.message);
+    }
+  };
+  
+  document.getElementById('edit_modal').classList.add('active');
+}
 
 function updatePLReport(lots,sales,wasteSales){let totalInvestment=0,totalRevenue=0;(lots||[]).forEach(lot=>{totalInvestment+=parseFloat(lot.cost)*100000});(sales||[]).forEach(sale=>{totalRevenue+=parseFloat(sale.total_value)});(wasteSales||[]).forEach(ws=>{totalRevenue+=parseFloat(ws.total_value)});const netProfit=totalRevenue-totalInvestment;const roi=totalInvestment>0?((netProfit/totalInvestment)*100).toFixed(2):0;const profitColor=netProfit>=0?'var(--neon)':'var(--red)';document.getElementById('pl_total_investment').innerText='Rs. '+totalInvestment.toLocaleString('en-IN');document.getElementById('pl_total_revenue').innerText='Rs. '+totalRevenue.toLocaleString('en-IN');document.getElementById('pl_net_profit').innerText=(netProfit>=0?'+ ':'- ')+'Rs. '+Math.abs(netProfit).toLocaleString('en-IN');document.getElementById('pl_net_profit').style.color=profitColor;document.getElementById('pl_profit_margin').innerText=roi+'%';document.getElementById('pl_profit_margin').style.color=profitColor;let lotBreakdownHtml='<table class="inventory-table"><tr><th>Lot</th><th>Investment</th><th>Revenue</th><th>P/L</th><th>ROI</th></tr>';(lots||[]).forEach(lot=>{const investment=parseFloat(lot.cost)*100000;const revenue=(sales||[]).filter(s=>s.lot_id===lot.lot_id).reduce((sum,s)=>sum+parseFloat(s.total_value),0);const profit=revenue-investment;const lotROI=investment>0?((profit/investment)*100).toFixed(1):0;const pColor=profit>=0?'var(--neon)':'var(--red)';lotBreakdownHtml+=`<tr><td>${lot.lot_id}</td><td>Rs. ${investment.toLocaleString('en-IN')}</td><td style="color:var(--blue)">Rs. ${revenue.toLocaleString('en-IN')}</td><td style="color:${pColor};font-weight:700">${profit>=0?'+':''}Rs. ${profit.toLocaleString('en-IN')}</td><td style="color:${pColor}">${lotROI}%</td></tr>`});lotBreakdownHtml+='</table>';document.getElementById('lot_pl_breakdown').innerHTML=lotBreakdownHtml}
 
