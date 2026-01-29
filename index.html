@@ -501,7 +501,7 @@ async function undoPolish(){
     const [lotId,blockIdOnly]=slab.block_id.split('-');
     
     // Reset to RAW status, keep raw dimensions, remove polished data
-    await supabaseClient.from('slabs').update({
+    const {data:updateData,error:updateError}=await supabaseClient.from('slabs').update({
       status:'RAW',
       polished_length:null,
       polished_height:null,
@@ -511,7 +511,18 @@ async function undoPolish(){
       rate:null,
       value:null,
       polish_wastage_sqft:null
-    }).eq('id',slabId);
+    }).eq('id',slabId).select();
+    
+    if(updateError){
+      throw new Error('Failed to update slab: '+updateError.message);
+    }
+    
+    // Verify the update
+    const {data:verifyData,error:verifyError}=await supabaseClient.from('slabs').select('status').eq('id',slabId).single();
+    
+    if(verifyError||!verifyData||verifyData.status!=='RAW'){
+      throw new Error('Update verification failed - slab may not have been updated');
+    }
     
     // Make sure the block is set to PROCESSING status
     await supabaseClient.from('blocks').update({
@@ -523,6 +534,7 @@ async function undoPolish(){
     alert(`✅ ${slab.slab_number} reverted to RAW status!`);
   }catch(error){
     alert('Error: '+error.message);
+    console.error('Undo polish error:',error);
   }
 }
 
