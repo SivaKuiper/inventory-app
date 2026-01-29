@@ -489,6 +489,10 @@ async function undoPolish(){
   const slabId=document.getElementById('undo_polish_slab_id').value;
   const slab=globalData.slabs.find(s=>s.id==slabId);
   
+  console.log('=== UNDO POLISH START ===');
+  console.log('Slab ID:', slabId, 'Type:', typeof slabId);
+  console.log('Slab:', slab);
+  
   if(!slab){
     alert('Slab not found');
     return;
@@ -497,44 +501,67 @@ async function undoPolish(){
   if(!confirm(`Undo polish for ${slab.slab_number}?\n\nIt will go back to RAW status with original dimensions.`))return;
   
   try{
+    // Convert slabId to integer
+    const slabIdInt=parseInt(slabId);
+    console.log('Slab ID as integer:', slabIdInt);
+    
     // Extract lot and block info
     const [lotId,blockIdOnly]=slab.block_id.split('-');
+    console.log('Lot:', lotId, 'Block:', blockIdOnly);
     
-    // Reset to RAW status, keep raw dimensions, remove polished data
-    const {data:updateData,error:updateError}=await supabaseClient.from('slabs').update({
-      status:'RAW',
-      polished_length:null,
-      polished_height:null,
-      polished_length_cm:null,
-      polished_height_cm:null,
-      polished_sqft:null,
-      rate:null,
-      value:null,
-      polish_wastage_sqft:null
-    }).eq('id',slabId).select();
+    // Check before update
+    const {data:before,error:beforeErr}=await supabaseClient.from('slabs').select('status,id,slab_number').eq('id',slabIdInt).single();
+    console.log('BEFORE:', before);
+    if(beforeErr) console.error('Before error:', beforeErr);
+    
+    // Try UPDATE with just status first
+    console.log('Attempting simple status update...');
+    const {data:updateData,error:updateError,status:httpStatus,statusText}=await supabaseClient
+      .from('slabs')
+      .update({status:'RAW'})
+      .eq('id',slabIdInt)
+      .select();
+    
+    console.log('Update response:', {data:updateData,error:updateError,httpStatus,statusText});
     
     if(updateError){
-      throw new Error('Failed to update slab: '+updateError.message);
+      console.error('Update failed:', updateError);
+      throw new Error('Update failed: '+updateError.message);
     }
     
-    // Verify the update
-    const {data:verifyData,error:verifyError}=await supabaseClient.from('slabs').select('status').eq('id',slabId).single();
+    // Check after update
+    const {data:after,error:afterErr}=await supabaseClient.from('slabs').select('status,id,slab_number').eq('id',slabIdInt).single();
+    console.log('AFTER:', after);
+    if(afterErr) console.error('After error:', afterErr);
     
-    if(verifyError||!verifyData||verifyData.status!=='RAW'){
-      throw new Error('Update verification failed - slab may not have been updated');
+    // Now update all other fields
+    if(after&&after.status==='RAW'){
+      console.log('Status changed to RAW, now clearing polished fields...');
+      await supabaseClient.from('slabs').update({
+        polished_length:null,
+        polished_height:null,
+        polished_length_cm:null,
+        polished_height_cm:null,
+        polished_sqft:null,
+        rate:null,
+        value:null,
+        polish_wastage_sqft:null
+      }).eq('id',slabIdInt);
+    }else{
+      throw new Error('Status did not change to RAW. Current status: '+(after?after.status:'unknown'));
     }
     
-    // Make sure the block is set to PROCESSING status
-    await supabaseClient.from('blocks').update({
-      processing_status:'PROCESSING'
-    }).eq('lot_id',lotId).eq('block_id',blockIdOnly);
+    // Update block status
+    await supabaseClient.from('blocks').update({processing_status:'PROCESSING'}).eq('lot_id',lotId).eq('block_id',blockIdOnly);
     
     closeEditModal();
     await refreshData();
     alert(`✅ ${slab.slab_number} reverted to RAW status!`);
+    console.log('=== UNDO POLISH SUCCESS ===');
   }catch(error){
-    alert('Error: '+error.message);
-    console.error('Undo polish error:',error);
+    console.error('=== UNDO POLISH ERROR ===');
+    console.error('Full error:', error);
+    alert('Error: '+error.message+'\n\nCheck browser console (F12) for details');
   }
 }
 
