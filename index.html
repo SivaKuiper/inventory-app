@@ -46,6 +46,26 @@
 <div id="polish" class="panel"><div class="panel-header"><h2>Polish</h2></div><label class="label-sm">Raw Slab</label><select id="p_slab_list" onchange="autoFillPolishDimensions()"></select><div class="calc-box" style="border-left-color:var(--orange);margin-bottom:16px"><div class="label-sm">Raw Dimensions</div><div id="raw_dimensions">Select slab</div></div><label class="label-sm">Polished Dimensions (cm)</label><div class="grid-2"><div><input type="number" id="p_l_cm" placeholder="Length" step="0.1" oninput="convertToInches('polish');calculatePolishWastage()"><div style="font-size:10px;color:var(--text-secondary);margin-top:-12px;margin-bottom:12px"><span id="p_l_in">0</span> inches</div></div><div><input type="number" id="p_h_cm" placeholder="Height" step="0.1" oninput="convertToInches('polish');calculatePolishWastage()"><div style="font-size:10px;color:var(--text-secondary);margin-top:-12px;margin-bottom:12px"><span id="p_h_in">0</span> inches</div></div></div><div id="polish_wastage_display" class="wastage-info" style="display:none"><strong>Polish Wastage:</strong> <span id="polish_wastage_text"></span></div><label class="label-sm">Quality</label><select id="p_q"></select><button class="save-btn" onclick="savePolish()">Finalize</button></div>
 
 <div id="users" class="panel"><div class="panel-header"><h2>Users</h2></div><div class="calc-box" style="border-left-color:var(--blue)"><div class="label-sm">Add User</div><label class="label-sm">Username</label><input type="text" id="new_username" placeholder="username"><label class="label-sm">Password</label><input type="text" id="new_password" placeholder="password"><label class="label-sm">Role</label><select id="new_role"><option value="admin">Admin</option><option value="supervisor">Supervisor</option></select><button class="save-btn" onclick="addUser()">Add</button></div><div class="section-header">All Users</div><div id="users_list"></div></div>
+
+<div id="settings" class="panel"><div class="panel-header"><h2>⚙️ Settings</h2></div>
+
+<div class="calc-box" style="border-left-color:var(--neon)"><div class="label-sm" style="color:var(--neon)">Quality Grades & Pricing</div><p style="font-size:11px;color:var(--text-secondary);margin-bottom:16px">Manage quality grades and their pricing for polished slabs</p>
+
+<div class="section-header" style="font-size:11px">Add New Quality Grade</div><label class="label-sm">Grade Name</label><input type="text" id="new_grade_name" placeholder="e.g., Premium Plus"><div class="grid-2"><div><label class="label-sm">Price (Rs/SQFT)</label><input type="number" id="new_grade_rate" placeholder="0"></div><div><label class="label-sm">Thickness</label><select id="new_grade_thickness"><option value="2cm">2 cm</option><option value="3cm">3 cm</option></select></div></div><button class="save-btn" onclick="addQualityGrade()">➕ Add Grade</button></div>
+
+<div class="section-header">Current Quality Grades</div><div id="quality_grades_list"></div>
+
+<div class="calc-box" style="border-left-color:var(--orange);margin-top:24px"><div class="label-sm" style="color:var(--orange)">⚠️ Data Management</div><p style="font-size:11px;color:var(--text-secondary);margin-bottom:16px">Manage blocks and sales</p>
+
+<button onclick="showReopenBlockUI()" style="background:var(--blue);border:none;padding:14px;border-radius:8px;color:#000;font-weight:700;width:100%;margin-bottom:12px;cursor:pointer">🔓 Reopen Completed Block</button>
+
+<button onclick="showReturnSaleUI()" style="background:var(--orange);border:none;padding:14px;border-radius:8px;color:#000;font-weight:700;width:100%;margin-bottom:12px;cursor:pointer">↩️ Return/Cancel Sale</button>
+
+<button onclick="showUndoPolishUI()" style="background:var(--red);border:none;padding:14px;border-radius:8px;color:#000;font-weight:700;width:100%;cursor:pointer">⏪ Undo Polish (Back to RAW)</button>
+
+</div>
+
+</div>
 </div></div>
 
 <div id="edit_modal" class="modal-overlay">
@@ -68,7 +88,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-let supabaseClient=null,currentUser=null,currentRole=null,globalData={lots:[],blocks:[],slabs:[],sales:[],wasteSales:[]};const SUPABASE_URL='YOUR_SUPABASE_URL_HERE',SUPABASE_KEY='YOUR_SUPABASE_KEY_HERE';const menuConfig={admin:['summary','inventory','sales','waste','reports','mass','block','slab','polish','users'],supervisor:['inventory','mass','block','slab','polish']},menuNames={summary:'Dashboard',inventory:'Inventory',sales:'Sales',waste:'Waste',reports:'P&L',mass:'Lot',block:'Block',slab:'Cut',polish:'Polish',users:'Users'};
+let supabaseClient=null,currentUser=null,currentRole=null,globalData={lots:[],blocks:[],slabs:[],sales:[],wasteSales:[]};const SUPABASE_URL='YOUR_SUPABASE_URL_HERE',SUPABASE_KEY='YOUR_SUPABASE_KEY_HERE';const menuConfig={admin:['summary','inventory','sales','waste','reports','mass','block','slab','polish','users','settings'],supervisor:['inventory','mass','block','slab','polish','settings']},menuNames={summary:'Dashboard',inventory:'Inventory',sales:'Sales',waste:'Waste',reports:'P&L',mass:'Lot',block:'Block',slab:'Cut',polish:'Polish',users:'Users',settings:'Settings'};
 
 function doLogin(){
   const username=document.getElementById('loginUsername').value.trim().toLowerCase();
@@ -255,6 +275,248 @@ function toggleBulkMode(){const isChecked=document.getElementById('bulk_mode_tog
 async function saveBulkSlabs(){if(!supabaseClient)return;const blockId=document.getElementById('bulk_block_list').value;const startNumber=document.getElementById('bulk_start_number').value.trim();const quantity=parseInt(document.getElementById('bulk_quantity').value);const thickness=document.getElementById('bulk_thick').value;const lcm=parseFloat(document.getElementById('bulk_l_cm').value);const hcm=parseFloat(document.getElementById('bulk_h_cm').value);if(!blockId||!startNumber||!quantity||!lcm||!hcm){alert('Fill all fields');return}if(quantity>100){if(!confirm(`You're about to create ${quantity} slabs. Continue?`))return}const lin=lcm/2.54;const hin=hcm/2.54;const sq=(lin*hin)/144;const match=startNumber.match(/^(.*?)(\d+)$/);if(!match){alert('Slab number must end with a number (e.g., SLAB-001)');return}const prefix=match[1];const startNum=parseInt(match[2]);const padding=match[2].length;try{const[lotId,blockIdOnly]=blockId.split('-');await supabaseClient.from('blocks').update({processing_status:'PROCESSING'}).eq('lot_id',lotId).eq('block_id',blockIdOnly);const slabs=[];for(let i=0;i<quantity;i++){const num=(startNum+i).toString().padStart(padding,'0');const slabNumber=prefix+num;slabs.push({block_id:blockId,slab_number:slabNumber,status:'RAW',raw_length:lin.toFixed(2),raw_height:hin.toFixed(2),raw_length_cm:lcm,raw_height_cm:hcm,raw_sqft:sq.toFixed(2),thickness:thickness})}const{error}=await supabaseClient.from('slabs').insert(slabs);if(error)throw error;document.getElementById('bulk_start_number').value='';document.getElementById('bulk_quantity').value='';document.getElementById('bulk_l_cm').value='';document.getElementById('bulk_h_cm').value='';document.getElementById('bulk_l_in').innerText='0';document.getElementById('bulk_h_in').innerText='0';document.getElementById('bulk_preview').innerHTML='Enter details above';await refreshData();alert(`✅ Successfully created ${quantity} slabs!`)}catch(error){alert('Error: '+error.message)}}
 
 let currentEditType='';let currentEditData=null;function closeEditModal(){document.getElementById('edit_modal').classList.remove('active');currentEditType='';currentEditData=null}document.addEventListener('click',(e)=>{const modal=document.getElementById('edit_modal');if(e.target===modal){closeEditModal()}});async function editLot(lotId){const lot=globalData.lots.find(l=>l.lot_id===lotId);if(!lot)return;currentEditType='Lot';currentEditData=lot;document.getElementById('edit_modal_title').textContent='✏️ Edit Lot';document.getElementById('edit_modal_content').innerHTML=`<input type="hidden" id="edit_lot_id" value="${lot.lot_id}"><label class="label-sm">Lot ID</label><input type="text" value="${lot.lot_id}" readonly style="background:var(--bg-secondary)"><label class="label-sm">Cost (Lakhs)</label><input type="number" id="edit_lot_cost" value="${lot.cost}" step="0.01">`;document.getElementById('save_edit_btn').onclick=saveLotEdit;document.getElementById('edit_modal').classList.add('active')}async function saveLotEdit(){const lotId=document.getElementById('edit_lot_id').value;const cost=parseFloat(document.getElementById('edit_lot_cost').value);if(!cost){alert('Enter cost');return}try{await supabaseClient.from('lots').update({cost:cost}).eq('lot_id',lotId);closeEditModal();await refreshData();alert('✅ Lot updated!')}catch(error){alert('Error: '+error.message)}}async function editBlock(lotId,blockId){const block=globalData.blocks.find(b=>b.lot_id===lotId&&b.block_id===blockId);if(!block)return;currentEditType='Block';currentEditData=block;document.getElementById('edit_modal_title').textContent='✏️ Edit Block';document.getElementById('edit_modal_content').innerHTML=`<input type="hidden" id="edit_block_lot_id" value="${lotId}"><input type="hidden" id="edit_block_id" value="${blockId}"><label class="label-sm">Block: ${lotId}-${blockId}</label><div class="section-header" style="color:var(--blue);font-size:11px;margin-top:12px">Original Dimensions</div><div class="grid-3"><div><label class="label-sm">L (cm)</label><input type="number" id="edit_orig_l" value="${block.original_length||''}"></div><div><label class="label-sm">H (cm)</label><input type="number" id="edit_orig_h" value="${block.original_height||''}"></div><div><label class="label-sm">W (cm)</label><input type="number" id="edit_orig_w" value="${block.original_width||''}"></div></div><div class="section-header" style="color:var(--neon);font-size:11px;margin-top:12px">Usable Dimensions</div><div class="grid-3"><div><label class="label-sm">L (cm)</label><input type="number" id="edit_use_l" value="${block.usable_length||''}"></div><div><label class="label-sm">H (cm)</label><input type="number" id="edit_use_h" value="${block.usable_height||''}"></div><div><label class="label-sm">W (cm)</label><input type="number" id="edit_use_w" value="${block.usable_width||''}"></div></div>`;document.getElementById('save_edit_btn').onclick=saveBlockEdit;document.getElementById('edit_modal').classList.add('active')}async function saveBlockEdit(){const lotId=document.getElementById('edit_block_lot_id').value;const blockId=document.getElementById('edit_block_id').value;const origL=parseFloat(document.getElementById('edit_orig_l').value);const origH=parseFloat(document.getElementById('edit_orig_h').value);const origW=parseFloat(document.getElementById('edit_orig_w').value);const useL=parseFloat(document.getElementById('edit_use_l').value);const useH=parseFloat(document.getElementById('edit_use_h').value);const useW=parseFloat(document.getElementById('edit_use_w').value);if(!origL||!origH||!origW||!useL||!useH||!useW){alert('Fill all dimensions');return}const origVol=(origL*origH*origW)/1000000;const useVol=(useL*useH*useW)/1000000;try{await supabaseClient.from('blocks').update({original_length:origL,original_height:origH,original_width:origW,original_volume:origVol.toFixed(3),usable_length:useL,usable_height:useH,usable_width:useW,usable_volume:useVol.toFixed(3)}).eq('lot_id',lotId).eq('block_id',blockId);closeEditModal();await refreshData();alert('✅ Block updated!')}catch(error){alert('Error: '+error.message)}}async function editSlab(slabId){const slab=globalData.slabs.find(s=>s.id===slabId);if(!slab)return;const isRAW=slab.status==='RAW';currentEditType=isRAW?'RAW Slab':'POLISHED Slab';currentEditData=slab;document.getElementById('edit_modal_title').textContent=`✏️ Edit ${isRAW?'Raw':'Polished'} Slab`;if(isRAW){document.getElementById('edit_modal_content').innerHTML=`<input type="hidden" id="edit_slab_id" value="${slab.id}"><label class="label-sm">Slab Number</label><input type="text" id="edit_slab_number" value="${slab.slab_number}"><label class="label-sm">Thickness</label><select id="edit_slab_thickness"><option value="2cm" ${slab.thickness==='2cm'?'selected':''}>2 cm</option><option value="3cm" ${slab.thickness==='3cm'?'selected':''}>3 cm</option></select><div class="grid-2"><div><label class="label-sm">Length (cm)</label><input type="number" id="edit_raw_l_cm" value="${slab.raw_length_cm}" step="0.1"></div><div><label class="label-sm">Height (cm)</label><input type="number" id="edit_raw_h_cm" value="${slab.raw_height_cm}" step="0.1"></div></div>`}else{const grades=JSON.parse(localStorage.getItem('quality_grades')||JSON.stringify([{name:'Premium 2cm',rate:150,thickness:'2cm'},{name:'Premium 3cm',rate:200,thickness:'3cm'},{name:'Standard 2cm',rate:100,thickness:'2cm'},{name:'Standard 3cm',rate:130,thickness:'3cm'},{name:'Commercial',rate:75,thickness:'2cm'}]));const gradeOptions=grades.map(g=>`<option value="${g.rate}" ${g.rate==slab.rate?'selected':''}>${g.name} (Rs. ${g.rate}/sqft)</option>`).join('');document.getElementById('edit_modal_content').innerHTML=`<input type="hidden" id="edit_slab_id" value="${slab.id}"><label class="label-sm">Slab Number</label><input type="text" id="edit_slab_number" value="${slab.slab_number}"><div class="calc-box" style="border-left-color:var(--orange);margin:12px 0;padding:12px"><div style="font-size:11px;color:var(--text-secondary)">Raw Dimensions</div><div style="font-size:13px;color:var(--neon);margin-top:4px">${slab.raw_length_cm} × ${slab.raw_height_cm} cm = ${slab.raw_sqft} sqft</div></div><label class="label-sm">Thickness</label><select id="edit_slab_thickness"><option value="2cm" ${slab.thickness==='2cm'?'selected':''}>2 cm</option><option value="3cm" ${slab.thickness==='3cm'?'selected':''}>3 cm</option></select><div class="grid-2"><div><label class="label-sm">Polished Length (cm)</label><input type="number" id="edit_polish_l_cm" value="${slab.polished_length_cm}" step="0.1"></div><div><label class="label-sm">Polished Height (cm)</label><input type="number" id="edit_polish_h_cm" value="${slab.polished_height_cm}" step="0.1"></div></div><label class="label-sm">Quality/Rate</label><select id="edit_polish_rate">${gradeOptions}</select>`}document.getElementById('save_edit_btn').onclick=saveSlabEdit;document.getElementById('edit_modal').classList.add('active')}async function saveSlabEdit(){const slabId=document.getElementById('edit_slab_id').value;const slabNumber=document.getElementById('edit_slab_number').value.trim();const thickness=document.getElementById('edit_slab_thickness').value;if(!slabNumber){alert('Enter slab number');return}try{if(currentEditType==='RAW Slab'){const lcm=parseFloat(document.getElementById('edit_raw_l_cm').value);const hcm=parseFloat(document.getElementById('edit_raw_h_cm').value);if(!lcm||!hcm){alert('Fill dimensions');return}const lin=lcm/2.54;const hin=hcm/2.54;const sqft=(lin*hin)/144;await supabaseClient.from('slabs').update({slab_number:slabNumber,thickness:thickness,raw_length:lin.toFixed(2),raw_height:hin.toFixed(2),raw_length_cm:lcm,raw_height_cm:hcm,raw_sqft:sqft.toFixed(2)}).eq('id',slabId)}else{const lcm=parseFloat(document.getElementById('edit_polish_l_cm').value);const hcm=parseFloat(document.getElementById('edit_polish_h_cm').value);const rate=parseFloat(document.getElementById('edit_polish_rate').value);if(!lcm||!hcm){alert('Fill dimensions');return}const lin=lcm/2.54;const hin=hcm/2.54;const sqft=(lin*hin)/144;const value=sqft*rate;await supabaseClient.from('slabs').update({slab_number:slabNumber,thickness:thickness,polished_length:lin.toFixed(2),polished_height:hin.toFixed(2),polished_length_cm:lcm,polished_height_cm:hcm,polished_sqft:sqft.toFixed(2),rate:rate,value:value.toFixed(0)}).eq('id',slabId)}closeEditModal();await refreshData();alert('✅ Slab updated!')}catch(error){alert('Error: '+error.message)}}
+
+
+// ========== QUALITY GRADES MANAGEMENT ==========
+function displayQualityGrades(){
+  const grades=JSON.parse(localStorage.getItem('quality_grades')||JSON.stringify([
+    {name:'Premium 2cm',rate:150,thickness:'2cm'},
+    {name:'Premium 3cm',rate:200,thickness:'3cm'},
+    {name:'Standard 2cm',rate:100,thickness:'2cm'},
+    {name:'Standard 3cm',rate:130,thickness:'3cm'},
+    {name:'Commercial',rate:75,thickness:'2cm'}
+  ]));
+  
+  let html='<table class="inventory-table"><tr><th>Grade Name</th><th>Price (Rs/SQFT)</th><th>Thickness</th><th>Action</th></tr>';
+  grades.forEach((g,index)=>{
+    html+=`<tr><td>${g.name}</td><td style="color:var(--neon);font-weight:700">Rs. ${g.rate}</td><td>${g.thickness}</td><td><button onclick="deleteQualityGrade(${index})" style="background:var(--red);border:none;padding:6px 12px;border-radius:4px;color:#fff;cursor:pointer;font-size:11px">Delete</button></td></tr>`;
+  });
+  html+='</table>';
+  document.getElementById('quality_grades_list').innerHTML=html;
+}
+
+function addQualityGrade(){
+  const name=document.getElementById('new_grade_name').value.trim();
+  const rate=parseFloat(document.getElementById('new_grade_rate').value);
+  const thickness=document.getElementById('new_grade_thickness').value;
+  
+  if(!name||!rate){
+    alert('Fill all fields');
+    return;
+  }
+  
+  const grades=JSON.parse(localStorage.getItem('quality_grades')||'[]');
+  grades.push({name,rate,thickness});
+  localStorage.setItem('quality_grades',JSON.stringify(grades));
+  
+  document.getElementById('new_grade_name').value='';
+  document.getElementById('new_grade_rate').value='';
+  
+  displayQualityGrades();
+  loadQualityGrades(); // Refresh dropdown in polish panel
+  alert('✅ Quality grade added!');
+}
+
+function deleteQualityGrade(index){
+  if(!confirm('Delete this quality grade?'))return;
+  
+  const grades=JSON.parse(localStorage.getItem('quality_grades')||'[]');
+  grades.splice(index,1);
+  localStorage.setItem('quality_grades',JSON.stringify(grades));
+  
+  displayQualityGrades();
+  loadQualityGrades();
+  alert('✅ Grade deleted!');
+}
+
+// Auto-display grades when settings panel is shown
+document.addEventListener('DOMContentLoaded',()=>{
+  const observer=new MutationObserver(()=>{
+    const settingsPanel=document.getElementById('settings');
+    if(settingsPanel&&settingsPanel.classList.contains('active')){
+      displayQualityGrades();
+    }
+  });
+  const panels=document.querySelectorAll('.panel');
+  panels.forEach(panel=>observer.observe(panel,{attributes:true,attributeFilter:['class']}));
+});
+
+// ========== REOPEN COMPLETED BLOCK ==========
+function showReopenBlockUI(){
+  const completedBlocks=globalData.blocks.filter(b=>b.status==='COMPLETED');
+  
+  if(completedBlocks.length===0){
+    alert('No completed blocks to reopen');
+    return;
+  }
+  
+  let options=completedBlocks.map(b=>`<option value="${b.lot_id}-${b.block_id}">${b.lot_id}-${b.block_id}</option>`).join('');
+  
+  document.getElementById('edit_modal_title').textContent='🔓 Reopen Completed Block';
+  document.getElementById('edit_modal_content').innerHTML=`
+    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">Select a completed block to reopen for adding more slabs</p>
+    <label class="label-sm">Select Block</label>
+    <select id="reopen_block_id">${options}</select>
+    <div class="wastage-info" style="margin-top:16px">
+      <strong>⚠️ Note:</strong> This will change block status back to ACTIVE so you can add more slabs. The block's existing slabs and statistics will remain unchanged.
+    </div>
+  `;
+  
+  document.getElementById('save_edit_btn').onclick=reopenBlock;
+  document.getElementById('edit_modal').classList.add('active');
+}
+
+async function reopenBlock(){
+  const blockId=document.getElementById('reopen_block_id').value;
+  const [lotId,blockIdOnly]=blockId.split('-');
+  
+  if(!confirm(`Reopen block ${blockId}? You can then add more slabs to it.`))return;
+  
+  try{
+    await supabaseClient.from('blocks').update({
+      status:'ACTIVE',
+      processing_status:'PROCESSING'
+    }).eq('lot_id',lotId).eq('block_id',blockIdOnly);
+    
+    closeEditModal();
+    await refreshData();
+    alert(`✅ Block ${blockId} reopened! You can now add more slabs.`);
+  }catch(error){
+    alert('Error: '+error.message);
+  }
+}
+
+// ========== RETURN/CANCEL SALE ==========
+function showReturnSaleUI(){
+  const sales=globalData.sales||[];
+  
+  if(sales.length===0){
+    alert('No sales to return');
+    return;
+  }
+  
+  let options='';
+  sales.forEach(sale=>{
+    const slab=globalData.slabs.find(s=>s.id===sale.slab_id);
+    if(slab){
+      options+=`<option value="${sale.id}">${slab.slab_number} - ${sale.customer_name} - Rs. ${parseFloat(sale.total_value).toLocaleString('en-IN')}</option>`;
+    }
+  });
+  
+  document.getElementById('edit_modal_title').textContent='↩️ Return/Cancel Sale';
+  document.getElementById('edit_modal_content').innerHTML=`
+    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">Select a sale to cancel and return slab to inventory</p>
+    <label class="label-sm">Select Sale</label>
+    <select id="return_sale_id">${options}</select>
+    <div class="wastage-info" style="margin-top:16px">
+      <strong>⚠️ What happens:</strong><br>
+      • Sale record will be deleted<br>
+      • Slab will return to POLISHED inventory<br>
+      • Slab will be available for sale again<br>
+      • Keep same Lot-Block-Slab reference
+    </div>
+  `;
+  
+  document.getElementById('save_edit_btn').onclick=returnSale;
+  document.getElementById('edit_modal').classList.add('active');
+}
+
+async function returnSale(){
+  const saleId=document.getElementById('return_sale_id').value;
+  const sale=globalData.sales.find(s=>s.id==saleId);
+  
+  if(!sale){
+    alert('Sale not found');
+    return;
+  }
+  
+  const slab=globalData.slabs.find(s=>s.id===sale.slab_id);
+  
+  if(!confirm(`Return sale of ${slab.slab_number} from ${sale.customer_name}?\n\nSlab will go back to POLISHED inventory.`))return;
+  
+  try{
+    // Delete sale record
+    await supabaseClient.from('sales').delete().eq('id',saleId);
+    
+    closeEditModal();
+    await refreshData();
+    alert(`✅ Sale returned! ${slab.slab_number} is back in POLISHED inventory.`);
+  }catch(error){
+    alert('Error: '+error.message);
+  }
+}
+
+// ========== UNDO POLISH (Back to RAW) ==========
+function showUndoPolishUI(){
+  const polishedSlabs=globalData.slabs.filter(s=>s.status==='POLISHED');
+  
+  // Filter out sold slabs
+  const availablePolished=polishedSlabs.filter(slab=>{
+    return !globalData.sales.some(sale=>sale.slab_id===slab.id);
+  });
+  
+  if(availablePolished.length===0){
+    alert('No polished slabs available to undo (unsold slabs only)');
+    return;
+  }
+  
+  let options='';
+  availablePolished.forEach(slab=>{
+    options+=`<option value="${slab.id}">${slab.slab_number} - ${slab.block_id} - ${slab.polished_sqft} sqft</option>`;
+  });
+  
+  document.getElementById('edit_modal_title').textContent='⏪ Undo Polish';
+  document.getElementById('edit_modal_content').innerHTML=`
+    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">Return a polished slab back to RAW status</p>
+    <label class="label-sm">Select Polished Slab</label>
+    <select id="undo_polish_slab_id">${options}</select>
+    <div class="wastage-info" style="margin-top:16px">
+      <strong>⚠️ What happens:</strong><br>
+      • Slab status changes from POLISHED → RAW<br>
+      • Polished dimensions removed<br>
+      • Quality/rate removed<br>
+      • Original RAW dimensions restored<br>
+      • Keeps same Lot-Block-Slab reference<br>
+      • Can be polished again
+    </div>
+  `;
+  
+  document.getElementById('save_edit_btn').onclick=undoPolish;
+  document.getElementById('edit_modal').classList.add('active');
+}
+
+async function undoPolish(){
+  const slabId=document.getElementById('undo_polish_slab_id').value;
+  const slab=globalData.slabs.find(s=>s.id==slabId);
+  
+  if(!slab){
+    alert('Slab not found');
+    return;
+  }
+  
+  if(!confirm(`Undo polish for ${slab.slab_number}?\n\nIt will go back to RAW status with original dimensions.`))return;
+  
+  try{
+    // Reset to RAW status, keep raw dimensions, remove polished data
+    await supabaseClient.from('slabs').update({
+      status:'RAW',
+      polished_length:null,
+      polished_height:null,
+      polished_length_cm:null,
+      polished_height_cm:null,
+      polished_sqft:null,
+      rate:null,
+      value:null,
+      polish_wastage_sqft:null
+    }).eq('id',slabId);
+    
+    closeEditModal();
+    await refreshData();
+    alert(`✅ ${slab.slab_number} reverted to RAW status!`);
+  }catch(error){
+    alert('Error: '+error.message);
+  }
+}
 
 
 </script>
